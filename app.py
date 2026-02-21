@@ -96,7 +96,7 @@ def api_endpoint():
     keywords = generate_inventory_trends(occasion)
     results = get_trends_data(keywords)
     
-    return jsonifyreturn jsonify(results)
+    return jsonify(results)
 
 if __name__ == "__main__":
     # Render uses the PORT environment variable
