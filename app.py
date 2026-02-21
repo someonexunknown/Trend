@@ -70,7 +70,7 @@ def get_trends_data(keywords: list):
                 
                 success = True
                 # Use a longer delay to prevent 429 errors
-                time.sleep(12) 
+                time.sleep(5) 
                 
             except Exception as e:
                 error_msg = str(e)
