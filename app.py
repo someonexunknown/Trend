@@ -39,29 +39,53 @@ def generate_inventory_trends(user_input):
     except Exception:
         return []
 
-def get_trends_data(keywords):
-    """Fetches trend data without normalization for flat JSON output."""
+def get_trends_data(keywords: list):
+    """Fetches trend data with fixed compatibility for modern urllib3 versions."""
     if not keywords:
         return {"error": "No keywords provided"}
 
     batches = [keywords[i:i + 5] for i in range(0, len(keywords), 5)]
+    
+    # FIX: Initialize without 'backoff_factor' here to avoid the method_whitelist error.
+    # We will handle the "politeness" and retries manually in our loop.
     pytrends = TrendReq(hl='en-IN', tz=330) 
+    
     all_results = {}
 
     for i, batch in enumerate(batches):
-        try:
-            pytrends.build_payload(batch, timeframe='today 3-m', geo='IN')
-            df = pytrends.interest_over_time()
-            if not df.empty:
-                df = df.drop(columns=['isPartial'])
-                averages = df.mean().to_dict()
-                for name, score in averages.items():
-                    all_results[name] = round(score, 2)
-            time.sleep(12) # Delay to avoid 429 errors
-        except Exception as e:
-            all_results[f"error_batch_{i+1}"] = str(e)
-    
-    return all_results
+        success = False
+        retries = 0
+        
+        while not success and retries < 2:
+            try:
+                # Standard Google Trends request
+                pytrends.build_payload(batch, timeframe='today 3-m', geo='IN')
+                df = pytrends.interest_over_time()
+                
+                if not df.empty:
+                    df = df.drop(columns=['isPartial'])
+                    averages = df.mean().to_dict()
+                    for name, score in averages.items():
+                        all_results[name] = round(score, 2)
+                
+                success = True
+                # Use a longer delay to prevent 429 errors
+                time.sleep(12) 
+                
+            except Exception as e:
+                error_msg = str(e)
+                if "429" in error_msg:
+                    # Cool down period if rate-limited
+                    time.sleep(60)
+                    retries += 1
+                else:
+                    # Handle other errors gracefully for the web output
+                    all_results[f"error_batch_{i+1}"] = error_msg
+                    break
+
+    return {
+        "results": all_results
+    }
 
 @app.route('/get_trends', methods=['POST'])
 def api_endpoint():
@@ -73,9 +97,6 @@ def api_endpoint():
     results = get_trends_data(keywords)
     
     return jsonify({
-        "status": "success",
-        "occasion": occasion,
-        "keywords": keywords,
         "results": results
     })
 
