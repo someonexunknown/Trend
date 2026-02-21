@@ -97,7 +97,7 @@ def api_endpoint():
     results = get_trends_data(keywords)
     
     return jsonify({
-        "results": results
+        results
     })
 
 if __name__ == "__main__":
