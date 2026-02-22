@@ -31,7 +31,7 @@ def generate_inventory_trends(user_input, location):
     )
     try:
         response = client.models.generate_content(
-            model="gemma-3-27b-it",
+            model="gemma-3-12b-it",
             contents=prompt,
             config={"temperature": 0.1, "max_output_tokens": 100}
         )
